@@ -6,73 +6,118 @@
     <title>Sistem Monitoring Banjir</title>
     <style>
         :root { --safe: #2ecc71; --danger: #e74c3c; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; min-height: 100vh; margin: 0; }
         .header { margin-bottom: 20px; text-align: center; }
-        .btn-audio { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold; }
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; width: 100%; max-width: 800px; }
-        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); text-align: center; transition: 0.3s; }
-        .danger { background-color: var(--danger) !important; color: white !important; animation: pulse 1s infinite; }
-        .value { font-size: 40px; font-weight: bold; margin: 10px 0; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+        .btn-audio { background: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-weight: bold; font-size: 16px; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-audio:hover { transform: translateY(-2px); box-shadow: 0 6px 8px rgba(0,0,0,0.15); }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; width: 100%; max-width: 900px; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.07); text-align: center; transition: all 0.4s ease; }
+        .danger { background-color: var(--danger) !important; color: white !important; animation: pulse-red 1.5s infinite; }
+        .card h3 { margin: 0 0 15px 0; font-size: 1.2rem; opacity: 0.8; }
+        .value { font-size: 50px; font-weight: 800; margin: 10px 0; line-height: 1; }
+        .unit { font-size: 20px; opacity: 0.7; margin-left: 5px; }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h1>Monitoring Banjir OPSSII</h1>
-        <button class="btn-audio" onclick="enableAudio()">🔊 Aktifkan Alarm Suara</button>
+        <button class="btn-audio" onclick="enableAudio()">🔊 Aktifkan Sirine Alarm</button>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">*Wajib klik tombol di atas untuk mengaktifkan suara</p>
     </div>
 
     <div class="container">
         <div id="card-alert" class="card">
             <h3>Status</h3>
-            <div class="value" id="v0">AMAN</div>
+            <div class="value" id="v0">MEMUAT...</div>
         </div>
         <div class="card">
             <h3>Tinggi Air</h3>
-            <div class="value"><span id="v1">0</span><small> cm</small></div>
+            <div class="value"><span id="v1">--</span><span class="unit">cm</span></div>
         </div>
         <div class="card">
             <h3>Jarak Sensor</h3>
-            <div class="value"><span id="v2">0</span><small> cm</small></div>
+            <div class="value"><span id="v2">--</span><span class="unit">cm</span></div>
         </div>
     </div>
 
     <script>
+        // GANTI DENGAN TOKEN ANDA
         const AUTH = 'rVK1jp0CUWH1vyZ39gfJ6oH6XXHdvIIU';
-        const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-        let isAudioEnabled = false;
+        
+        // Menggunakan suara sirine polisi yang lebih kencang dan panjang
+        // Sumber: FreeSound.org (Public Domain)
+        const sirenUrl = 'https://cdn.pixabay.com/audio/2022/03/15/audio_b124080189.mp3'; 
+        const sirenAudio = new Audio(sirenUrl);
+        sirenAudio.loop = true; // Mengaktifkan fitur ulang otomatis
 
+        let isAudioAllowed = false;
+
+        // Fungsi untuk mengaktifkan suara (harus diklik pengguna)
         function enableAudio() {
-            isAudioEnabled = true;
             const btn = document.querySelector('.btn-audio');
-            btn.innerText = "✅ Suara Aktif";
-            btn.style.background = "#27ae60";
+            
+            // Cek jika audio sudah aktif
+            if (!isAudioAllowed) {
+                // Coba mainkan sebentar lalu langsung pause (untuk "membuka kunci" di browser)
+                sirenAudio.play().then(() => {
+                    sirenAudio.pause();
+                    sirenAudio.currentTime = 0;
+                    
+                    isAudioAllowed = true;
+                    btn.innerText = "✅ Sirine Siap";
+                    btn.style.background = "#27ae60";
+                    btn.disabled = true; // Tombol dimatikan setelah diklik
+                    console.log("Audio diaktifkan pengguna");
+                }).catch(error => {
+                    console.error("Gagal mengaktifkan audio:", error);
+                    alert("Gagal mengaktifkan suara. Silakan coba lagi.");
+                });
+            }
         }
 
         function updateData() {
-            const url = 'https://blynk.cloud/external/api/get?token=' + AUTH + '&v0&v1&v2';
+            const url = `https://blynk.cloud/external/api/get?token=${AUTH}&v0&v1&v2`;
             
             fetch(url)
                 .then(res => res.json())
                 .then(data => {
+                    // Update angka
                     document.getElementById('v1').innerText = data.v1 ?? '0';
                     document.getElementById('v2').innerText = data.v2 ?? '0';
 
+                    // Logika Status & Suara
+                    const alertCard = document.getElementById('card-alert');
+                    const statusText = document.getElementById('v0');
+
                     if (data.v0 == 1) {
-                        document.getElementById('v0').innerText = "BAHAYA!";
-                        document.getElementById('card-alert').className = "card danger";
-                        if (isAudioEnabled) audio.play();
+                        // Kondisi BAHAYA
+                        statusText.innerText = "BAHAYA!";
+                        alertCard.className = "card danger";
+                        
+                        // Mainkan sirine hanya jika pengguna sudah mengizinkan
+                        if (isAudioAllowed && sirenAudio.paused) {
+                            sirenAudio.play().catch(err => console.error("Gagal memutar audio:", err));
+                        }
                     } else {
-                        document.getElementById('v0').innerText = "AMAN";
-                        document.getElementById('card-alert').className = "card";
+                        // Kondisi AMAN
+                        statusText.innerText = "AMAN";
+                        alertCard.className = "card";
+                        
+                        // Matikan sirine
+                        if (!sirenAudio.paused) {
+                            sirenAudio.pause();
+                            sirenAudio.currentTime = 0; // Kembali ke awal
+                        }
                     }
                 })
-                .catch(err => console.error('Gagal mengambil data:', err));
+                .catch(err => console.log('Menunggu data...'));
         }
 
+        // Perbarui data setiap 2 detik
         setInterval(updateData, 2000);
-        updateData();
+        updateData(); // Panggil sekali saat load
     </script>
 </body>
 </html>
