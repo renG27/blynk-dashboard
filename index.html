@@ -5,17 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Monitoring Banjir</title>
     <style>
-        :root { --safe: #2ecc71; --danger: #e74c3c; }
+        :root { --warning: #f39c12; --danger: #e74c3c; }
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; min-height: 100vh; margin: 0; }
         .header { margin-bottom: 20px; text-align: center; }
         .btn-audio { background: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-weight: bold; font-size: 16px; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .btn-audio:hover { transform: translateY(-2px); box-shadow: 0 6px 8px rgba(0,0,0,0.15); }
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; width: 100%; max-width: 900px; }
-        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.07); text-align: center; transition: all 0.4s ease; }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; width: 100%; max-width: 1000px; }
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.07); text-align: center; transition: all 0.4s ease; }
+        .warning { background-color: var(--warning) !important; color: white !important; animation: pulse-warning 1.5s infinite; }
         .danger { background-color: var(--danger) !important; color: white !important; animation: pulse-red 1.5s infinite; }
-        .card h3 { margin: 0 0 15px 0; font-size: 1.2rem; opacity: 0.8; }
-        .value { font-size: 50px; font-weight: 800; margin: 10px 0; line-height: 1; }
-        .unit { font-size: 20px; opacity: 0.7; margin-left: 5px; }
+        .card h3 { margin: 0 0 15px 0; font-size: 1.1rem; opacity: 0.8; }
+        .value { font-size: 40px; font-weight: 800; margin: 10px 0; line-height: 1; }
+        .unit { font-size: 18px; opacity: 0.7; margin-left: 5px; }
+        @keyframes pulse-warning { 0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(243, 156, 18, 0); } 100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); } }
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
     </style>
 </head>
@@ -32,12 +34,16 @@
 
     <div class="container">
         <div id="card-alert" class="card">
-            <h3>Status</h3>
-            <div class="value" id="v0">MEMUAT...</div>
+            <h3>Status Peringatan</h3>
+            <div class="value" id="v0" style="font-size: 28px;">MEMUAT...</div>
         </div>
         <div class="card">
             <h3>Tinggi Air</h3>
             <div class="value"><span id="v1">--</span><span class="unit">cm</span></div>
+        </div>
+        <div class="card">
+            <h3>Kekeruhan Air</h3>
+            <div class="value"><span id="v3">--</span><span class="unit">%</span></div>
         </div>
         <div class="card">
             <h3>Jarak Sensor</h3>
@@ -46,7 +52,7 @@
     </div>
 
     <script>
-        const AUTH = 'rVK1jp0CUWH1vyZ39gfJ6oH6XXHdvIIU';
+        const AUTH = 'jaibO6LDxC-UxSlokbKROHT-ugz7GgY0';
         const alarm = document.getElementById('alarmSound');
         let isAudioAllowed = false;
 
@@ -58,7 +64,8 @@
                 btn.style.background = "#e74c3c";
                 
                 alarm.play().then(() => {
-                    if (document.getElementById('v0').innerText !== "BAHAYA!") {
+                    const status = document.getElementById('v0').innerText;
+                    if (status === "AMAN" || status === "MEMUAT...") {
                         alarm.pause();
                         alarm.currentTime = 0;
                     }
@@ -73,29 +80,30 @@
         }
 
         function updateData() {
-            const url = 'https://blynk.cloud/external/api/get?token=' + AUTH + '&v0&v1&v2';
+            const url = 'https://blynk.cloud/external/api/get?token=' + AUTH + '&v0&v1&v2&v3';
             
             fetch(url)
                 .then(res => res.json())
                 .then(data => {
                     if (data.v1 !== undefined) document.getElementById('v1').innerText = data.v1;
                     if (data.v2 !== undefined) document.getElementById('v2').innerText = data.v2;
+                    if (data.v3 !== undefined) document.getElementById('v3').innerText = data.v3;
 
                     const alertCard = document.getElementById('card-alert');
                     const statusText = document.getElementById('v0');
 
                     if (data.v0 !== undefined) {
-                        if (data.v0 == 1) {
-                            statusText.innerText = "BAHAYA!";
+                        if (data.v0 == 2) {
+                            statusText.innerText = "AWAS TERCEMAR";
                             alertCard.className = "card danger";
-                            
-                            if (isAudioAllowed && alarm.paused) {
-                                alarm.play().catch(err => console.error(err));
-                            }
+                            if (isAudioAllowed && alarm.paused) alarm.play().catch(e => console.error(e));
+                        } else if (data.v0 == 1) {
+                            statusText.innerText = "WASPADA GENANG";
+                            alertCard.className = "card warning";
+                            if (isAudioAllowed && alarm.paused) alarm.play().catch(e => console.error(e));
                         } else {
                             statusText.innerText = "AMAN";
                             alertCard.className = "card";
-                            
                             if (!alarm.paused) {
                                 alarm.pause();
                                 alarm.currentTime = 0;
