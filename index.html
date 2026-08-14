@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Monitoring Banjir</title>
     <style>
-        :root { --warning: #f39c12; --danger: #e74c3c; }
+        :root { --warning: #f39c12; --danger: #e74c3c; --safe: #2ecc71; }
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; min-height: 100vh; margin: 0; }
         .header { margin-bottom: 20px; text-align: center; }
         .btn-audio { background: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-weight: bold; font-size: 16px; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -41,10 +41,9 @@
             <h3>Tinggi Air</h3>
             <div class="value"><span id="v1">--</span><span class="unit">cm</span></div>
         </div>
-        <!-- BAGIAN INI YANG DIUBAH -->
         <div class="card">
             <h3>Sanitasi Air</h3>
-            <div class="value"><span id="v3">--</span><span class="unit">%</span></div>
+            <div class="value" id="v3" style="font-size: 28px;">--</div>
         </div>
         <div class="card">
             <h3>Jarak Sensor</h3>
@@ -53,7 +52,7 @@
     </div>
 
     <script>
-        const AUTH = 'rVK1jp0CUWH1vyZ39gfJ6oH6XXHdvIIU';
+        const AUTH = 'jaibO6LDxC-UxSlokbKROHT-ugz7GgY0';
         const alarm = document.getElementById('alarmSound');
         let isAudioAllowed = false;
 
@@ -88,18 +87,32 @@
                 .then(data => {
                     if (data.v1 !== undefined) document.getElementById('v1').innerText = data.v1;
                     if (data.v2 !== undefined) document.getElementById('v2').innerText = data.v2;
-                    if (data.v3 !== undefined) document.getElementById('v3').innerText = data.v3;
+                    
+                    if (data.v3 !== undefined) {
+                        let turb = parseInt(data.v3);
+                        let textSanitasi = "MEMUAT...";
+                        
+                        if (turb <= 15) {
+                            textSanitasi = "JERNIH";
+                        } else if (turb <= 40) {
+                            textSanitasi = "NORMAL";
+                        } else {
+                            textSanitasi = "TERCEMAR";
+                        }
+                        
+                        document.getElementById('v3').innerText = textSanitasi;
+                    }
 
                     const alertCard = document.getElementById('card-alert');
                     const statusText = document.getElementById('v0');
 
                     if (data.v0 !== undefined) {
                         if (data.v0 == 2) {
-                            statusText.innerText = "AWAS AIR TERCEMAR";
+                            statusText.innerText = "AWAS TERCEMAR";
                             alertCard.className = "card danger";
                             if (isAudioAllowed && alarm.paused) alarm.play().catch(e => console.error(e));
                         } else if (data.v0 == 1) {
-                            statusText.innerText = "WASPADA GENANGAN AIR";
+                            statusText.innerText = "WASPADA GENANG";
                             alertCard.className = "card warning";
                             if (isAudioAllowed && alarm.paused) alarm.play().catch(e => console.error(e));
                         } else {
