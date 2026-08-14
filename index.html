@@ -41,8 +41,9 @@
             <h3>Tinggi Air</h3>
             <div class="value"><span id="v1">--</span><span class="unit">cm</span></div>
         </div>
+        <!-- BAGIAN INI YANG DIUBAH -->
         <div class="card">
-            <h3>Kekeruhan Air</h3>
+            <h3>Sanitasi Air</h3>
             <div class="value"><span id="v3">--</span><span class="unit">%</span></div>
         </div>
         <div class="card">
@@ -52,7 +53,7 @@
     </div>
 
     <script>
-        const AUTH = 'jaibO6LDxC-UxSlokbKROHT-ugz7GgY0';
+        const AUTH = 'rVK1jp0CUWH1vyZ39gfJ6oH6XXHdvIIU';
         const alarm = document.getElementById('alarmSound');
         let isAudioAllowed = false;
 
@@ -94,11 +95,11 @@
 
                     if (data.v0 !== undefined) {
                         if (data.v0 == 2) {
-                            statusText.innerText = "AWAS TERCEMAR";
+                            statusText.innerText = "AWAS AIR TERCEMAR";
                             alertCard.className = "card danger";
                             if (isAudioAllowed && alarm.paused) alarm.play().catch(e => console.error(e));
                         } else if (data.v0 == 1) {
-                            statusText.innerText = "WASPADA GENANG";
+                            statusText.innerText = "WASPADA GENANGAN AIR";
                             alertCard.className = "card warning";
                             if (isAudioAllowed && alarm.paused) alarm.play().catch(e => console.error(e));
                         } else {
