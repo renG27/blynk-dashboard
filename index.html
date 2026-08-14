@@ -23,11 +23,9 @@
 
     <div class="header">
         <h1>Monitoring Banjir OPSSII</h1>
-        <button class="btn-audio" onclick="enableAudio()">🔊 Aktifkan Alarm (KLIK SINI)</button>
-        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">*Wajib klik tombol di atas agar suara sirine diizinkan browser</p>
+        <button class="btn-audio" onclick="toggleAudio()">🔊 Nyalakan Alarm</button>
     </div>
 
-    <!-- AUDIO MENGGUNAKAN FILE LOKAL YANG SUDAH DIUPLOAD -->
     <audio id="alarmSound" loop preload="auto">
         <source src="sirine.mp3" type="audio/mpeg">
     </audio>
@@ -52,19 +50,26 @@
         const alarm = document.getElementById('alarmSound');
         let isAudioAllowed = false;
 
-        function enableAudio() {
-            alarm.play().then(() => {
+        function toggleAudio() {
+            const btn = document.querySelector('.btn-audio');
+            if (!isAudioAllowed) {
+                isAudioAllowed = true;
+                btn.innerText = "🔇 Matikan Alarm";
+                btn.style.background = "#e74c3c";
+                
+                alarm.play().then(() => {
+                    if (document.getElementById('v0').innerText !== "BAHAYA!") {
+                        alarm.pause();
+                        alarm.currentTime = 0;
+                    }
+                }).catch(err => console.error(err));
+            } else {
+                isAudioAllowed = false;
+                btn.innerText = "🔊 Nyalakan Alarm";
+                btn.style.background = "#3498db";
                 alarm.pause();
                 alarm.currentTime = 0;
-                isAudioAllowed = true;
-                
-                const btn = document.querySelector('.btn-audio');
-                btn.innerText = "✅ Alarm Aktif & Siap!";
-                btn.style.background = "#27ae60";
-                btn.disabled = true;
-            }).catch(err => {
-                alert("Browser memblokir suara. Pastikan kamu sudah klik tombol.");
-            });
+            }
         }
 
         function updateData() {
@@ -73,35 +78,34 @@
             fetch(url)
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('v1').innerText = data.v1 ?? '0';
-                    document.getElementById('v2').innerText = data.v2 ?? '0';
+                    if (data.v1 !== undefined) document.getElementById('v1').innerText = data.v1;
+                    if (data.v2 !== undefined) document.getElementById('v2').innerText = data.v2;
 
                     const alertCard = document.getElementById('card-alert');
                     const statusText = document.getElementById('v0');
 
-                    // Logika jika Bahaya (V0 = 1)
-                    if (data.v0 == 1) {
-                        statusText.innerText = "BAHAYA!";
-                        alertCard.className = "card danger";
-                        
-                        if (isAudioAllowed && alarm.paused) {
-                            alarm.play();
-                        }
-                    } else {
-                        // Logika jika Aman (V0 = 0)
-                        statusText.innerText = "AMAN";
-                        alertCard.className = "card";
-                        
-                        if (!alarm.paused) {
-                            alarm.pause();
-                            alarm.currentTime = 0;
+                    if (data.v0 !== undefined) {
+                        if (data.v0 == 1) {
+                            statusText.innerText = "BAHAYA!";
+                            alertCard.className = "card danger";
+                            
+                            if (isAudioAllowed && alarm.paused) {
+                                alarm.play().catch(err => console.error(err));
+                            }
+                        } else {
+                            statusText.innerText = "AMAN";
+                            alertCard.className = "card";
+                            
+                            if (!alarm.paused) {
+                                alarm.pause();
+                                alarm.currentTime = 0;
+                            }
                         }
                     }
                 })
-                .catch(err => console.log('Menunggu data dari Blynk...'));
+                .catch(err => console.error(err));
         }
 
-        // Perbarui data setiap 2 detik
         setInterval(updateData, 2000);
         updateData();
     </script>
