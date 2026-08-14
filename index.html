@@ -23,9 +23,14 @@
 
     <div class="header">
         <h1>Monitoring Banjir OPSSII</h1>
-        <button class="btn-audio" onclick="enableAudio()">🔊 Aktifkan Sirine Alarm</button>
-        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">*Wajib klik tombol di atas untuk mengizinkan suara browser</p>
+        <button class="btn-audio" onclick="enableAudio()">🔊 Aktifkan Alarm (KLIK SINI)</button>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">*Wajib klik tombol di atas agar suara sirine diizinkan browser</p>
     </div>
+
+    <!-- AUDIO MENGGUNAKAN FILE LOKAL YANG SUDAH DIUPLOAD -->
+    <audio id="alarmSound" loop preload="auto">
+        <source src="sirine.mp3" type="audio/mpeg">
+    </audio>
 
     <div class="container">
         <div id="card-alert" class="card">
@@ -44,55 +49,26 @@
 
     <script>
         const AUTH = 'rVK1jp0CUWH1vyZ39gfJ6oH6XXHdvIIU';
-        
-        let audioCtx = null;
-        let sirenTimer = null;
+        const alarm = document.getElementById('alarmSound');
         let isAudioAllowed = false;
 
         function enableAudio() {
-            try {
-                // Mengaktifkan Web Audio API browser (bebas dari error link eksternal)
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                audioCtx.resume();
+            alarm.play().then(() => {
+                alarm.pause();
+                alarm.currentTime = 0;
                 isAudioAllowed = true;
                 
                 const btn = document.querySelector('.btn-audio');
-                btn.innerText = "✅ Sirine Siap Aktif";
+                btn.innerText = "✅ Alarm Aktif & Siap!";
                 btn.style.background = "#27ae60";
                 btn.disabled = true;
-            } catch (e) {
-                alert("Browser tidak mendukung audio.");
-            }
-        }
-
-        // Membuat suara sirine otomatis langsung dari program JavaScript
-        function playSirenBeep() {
-            if (!audioCtx) return;
-            
-            let osc = audioCtx.createOscillator();
-            let gain = audioCtx.createGain();
-            
-            osc.type = 'sawtooth'; // Karakter suara tajam mirip sirine
-            let now = audioCtx.currentTime;
-            
-            // Efek naik-turun frekuensi ala sirine
-            osc.frequency.setValueAtTime(450, now);
-            osc.frequency.linearRampToValueAtTime(850, now + 0.3);
-            osc.frequency.linearRampToValueAtTime(450, now + 0.6);
-            
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.linearRampToValueAtTime(0.3, now + 0.5);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.start(now);
-            osc.stop(now + 0.6);
+            }).catch(err => {
+                alert("Browser memblokir suara. Pastikan kamu sudah klik tombol.");
+            });
         }
 
         function updateData() {
-            const url = `https://blynk.cloud/external/api/get?token=${AUTH}&v0&v1&v2`;
+            const url = 'https://blynk.cloud/external/api/get?token=' + AUTH + '&v0&v1&v2';
             
             fetch(url)
                 .then(res => res.json())
@@ -103,29 +79,29 @@
                     const alertCard = document.getElementById('card-alert');
                     const statusText = document.getElementById('v0');
 
+                    // Logika jika Bahaya (V0 = 1)
                     if (data.v0 == 1) {
                         statusText.innerText = "BAHAYA!";
                         alertCard.className = "card danger";
                         
-                        // Bunyikan sirine berulang kali jika status bahaya
-                        if (isAudioAllowed && !sirenTimer) {
-                            playSirenBeep();
-                            sirenTimer = setInterval(playSirenBeep, 700);
+                        if (isAudioAllowed && alarm.paused) {
+                            alarm.play();
                         }
                     } else {
+                        // Logika jika Aman (V0 = 0)
                         statusText.innerText = "AMAN";
                         alertCard.className = "card";
                         
-                        // Matikan sirine jika kembali aman
-                        if (sirenTimer) {
-                            clearInterval(sirenTimer);
-                            sirenTimer = null;
+                        if (!alarm.paused) {
+                            alarm.pause();
+                            alarm.currentTime = 0;
                         }
                     }
                 })
-                .catch(err => console.log('Menunggu data...'));
+                .catch(err => console.log('Menunggu data dari Blynk...'));
         }
 
+        // Perbarui data setiap 2 detik
         setInterval(updateData, 2000);
         updateData();
     </script>
