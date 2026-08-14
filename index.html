@@ -39,36 +39,40 @@
     </div>
 
     <script>
-        const AUTH = 'rVK1jp0CUWH1vyZ39gfJ6oH6XXHdvIIU'; // GANTI INI!
+        const AUTH = 'rVK1jp0CUWH1vyZ39gfJ6oH6XXHdvIIU';
         const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
         let isAudioEnabled = false;
 
         function enableAudio() {
             isAudioEnabled = true;
-            document.querySelector('.btn-audio').innerText = "✅ Suara Aktif";
-            document.querySelector('.btn-audio').style.background = "#27ae60";
+            const btn = document.querySelector('.btn-audio');
+            btn.innerText = "✅ Suara Aktif";
+            btn.style.background = "#27ae60";
         }
 
         function updateData() {
-            fetch(`https://blynk.cloud/external/api/get?token=${AUTH}&v0&v1&v2`)
+            const url = 'https://blynk.cloud/external/api/get?token=' + AUTH + '&v0&v1&v2';
+            
+            fetch(url)
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('v1').innerText = data.v1;
-                    document.getElementById('v2').innerText = data.v2;
+                    document.getElementById('v1').innerText = data.v1 ?? '0';
+                    document.getElementById('v2').innerText = data.v2 ?? '0';
 
-                    // Logika Alarm (V0 == 1 berarti Bahaya)
                     if (data.v0 == 1) {
                         document.getElementById('v0').innerText = "BAHAYA!";
                         document.getElementById('card-alert').className = "card danger";
-                        if(isAudioEnabled) audio.play();
+                        if (isAudioEnabled) audio.play();
                     } else {
                         document.getElementById('v0').innerText = "AMAN";
                         document.getElementById('card-alert').className = "card";
                     }
-                });
+                })
+                .catch(err => console.error('Gagal mengambil data:', err));
         }
 
         setInterval(updateData, 2000);
+        updateData();
     </script>
 </body>
 </html>
