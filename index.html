@@ -24,7 +24,7 @@
     <div class="header">
         <h1>Monitoring Banjir OPSSII</h1>
         <button class="btn-audio" onclick="enableAudio()">🔊 Aktifkan Sirine Alarm</button>
-        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">*Wajib klik tombol di atas untuk mengaktifkan suara</p>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">*Wajib klik tombol di atas untuk mengizinkan suara browser</p>
     </div>
 
     <div class="container">
@@ -43,38 +43,52 @@
     </div>
 
     <script>
-        // GANTI DENGAN TOKEN ANDA
         const AUTH = 'rVK1jp0CUWH1vyZ39gfJ6oH6XXHdvIIU';
         
-        // Menggunakan suara sirine polisi yang lebih kencang dan panjang
-        // Sumber: FreeSound.org (Public Domain)
-        const sirenUrl = 'https://cdn.pixabay.com/audio/2022/03/15/audio_b124080189.mp3'; 
-        const sirenAudio = new Audio(sirenUrl);
-        sirenAudio.loop = true; // Mengaktifkan fitur ulang otomatis
-
+        let audioCtx = null;
+        let sirenTimer = null;
         let isAudioAllowed = false;
 
-        // Fungsi untuk mengaktifkan suara (harus diklik pengguna)
         function enableAudio() {
-            const btn = document.querySelector('.btn-audio');
-            
-            // Cek jika audio sudah aktif
-            if (!isAudioAllowed) {
-                // Coba mainkan sebentar lalu langsung pause (untuk "membuka kunci" di browser)
-                sirenAudio.play().then(() => {
-                    sirenAudio.pause();
-                    sirenAudio.currentTime = 0;
-                    
-                    isAudioAllowed = true;
-                    btn.innerText = "✅ Sirine Siap";
-                    btn.style.background = "#27ae60";
-                    btn.disabled = true; // Tombol dimatikan setelah diklik
-                    console.log("Audio diaktifkan pengguna");
-                }).catch(error => {
-                    console.error("Gagal mengaktifkan audio:", error);
-                    alert("Gagal mengaktifkan suara. Silakan coba lagi.");
-                });
+            try {
+                // Mengaktifkan Web Audio API browser (bebas dari error link eksternal)
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                audioCtx.resume();
+                isAudioAllowed = true;
+                
+                const btn = document.querySelector('.btn-audio');
+                btn.innerText = "✅ Sirine Siap Aktif";
+                btn.style.background = "#27ae60";
+                btn.disabled = true;
+            } catch (e) {
+                alert("Browser tidak mendukung audio.");
             }
+        }
+
+        // Membuat suara sirine otomatis langsung dari program JavaScript
+        function playSirenBeep() {
+            if (!audioCtx) return;
+            
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            
+            osc.type = 'sawtooth'; // Karakter suara tajam mirip sirine
+            let now = audioCtx.currentTime;
+            
+            // Efek naik-turun frekuensi ala sirine
+            osc.frequency.setValueAtTime(450, now);
+            osc.frequency.linearRampToValueAtTime(850, now + 0.3);
+            osc.frequency.linearRampToValueAtTime(450, now + 0.6);
+            
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.linearRampToValueAtTime(0.3, now + 0.5);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 0.6);
         }
 
         function updateData() {
@@ -83,41 +97,37 @@
             fetch(url)
                 .then(res => res.json())
                 .then(data => {
-                    // Update angka
                     document.getElementById('v1').innerText = data.v1 ?? '0';
                     document.getElementById('v2').innerText = data.v2 ?? '0';
 
-                    // Logika Status & Suara
                     const alertCard = document.getElementById('card-alert');
                     const statusText = document.getElementById('v0');
 
                     if (data.v0 == 1) {
-                        // Kondisi BAHAYA
                         statusText.innerText = "BAHAYA!";
                         alertCard.className = "card danger";
                         
-                        // Mainkan sirine hanya jika pengguna sudah mengizinkan
-                        if (isAudioAllowed && sirenAudio.paused) {
-                            sirenAudio.play().catch(err => console.error("Gagal memutar audio:", err));
+                        // Bunyikan sirine berulang kali jika status bahaya
+                        if (isAudioAllowed && !sirenTimer) {
+                            playSirenBeep();
+                            sirenTimer = setInterval(playSirenBeep, 700);
                         }
                     } else {
-                        // Kondisi AMAN
                         statusText.innerText = "AMAN";
                         alertCard.className = "card";
                         
-                        // Matikan sirine
-                        if (!sirenAudio.paused) {
-                            sirenAudio.pause();
-                            sirenAudio.currentTime = 0; // Kembali ke awal
+                        // Matikan sirine jika kembali aman
+                        if (sirenTimer) {
+                            clearInterval(sirenTimer);
+                            sirenTimer = null;
                         }
                     }
                 })
                 .catch(err => console.log('Menunggu data...'));
         }
 
-        // Perbarui data setiap 2 detik
         setInterval(updateData, 2000);
-        updateData(); // Panggil sekali saat load
+        updateData();
     </script>
 </body>
 </html>
